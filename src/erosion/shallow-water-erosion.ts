@@ -1,6 +1,5 @@
 ﻿import { Heightmap } from "../core/heightmap";
 import type { ShallowWaterErosionParams } from "../core/types";
-import shallowWaterShaderCode from "../shaders/shallow-water.wgsl?raw";
 
 /**
  * Grid-Based Shallow Water Erosion Engine (Mei, Decaudin & Hu 2007 virtual pipe model).
@@ -17,18 +16,11 @@ export class ShallowWaterErosion {
   // Temporary buffer for semi-Lagrangian advection
   private readonly sedimentTemp: Float32Array;
 
-  // GPU state
-  private device: GPUDevice | null = null;
-  private pipelinePass0: GPUComputePipeline | null = null;
-  private pipelinePass1: GPUComputePipeline | null = null;
-  private pipelinePass2: GPUComputePipeline | null = null;
-  private isGpuReady = false;
-
   // Mass conservation diagnostics
   public totalErodedBedrock = 0;
   public totalDepositedSediment = 0;
 
-  constructor(resolution = 512, gpuDevice: GPUDevice | null = null) {
+  constructor(resolution = 512) {
     this.resolution = resolution;
     const total = resolution * resolution;
     this.water = new Float32Array(total);
@@ -36,43 +28,6 @@ export class ShallowWaterErosion {
     this.sedimentTemp = new Float32Array(total);
     this.flux = new Float32Array(total * 4);
     this.velocity = new Float32Array(total * 2);
-
-    if (gpuDevice) {
-      this.initGPU(gpuDevice);
-    }
-  }
-
-  public initGPU(device: GPUDevice): void {
-    try {
-      this.device = device;
-      const module = device.createShaderModule({
-        label: "Shallow Water Shader Module",
-        code: shallowWaterShaderCode
-      });
-
-      this.pipelinePass0 = device.createComputePipeline({
-        label: "Pass 0 Flux",
-        layout: "auto",
-        compute: { module, entryPoint: "pass0_flux" }
-      });
-
-      this.pipelinePass1 = device.createComputePipeline({
-        label: "Pass 1 Water",
-        layout: "auto",
-        compute: { module, entryPoint: "pass1_water" }
-      });
-
-      this.pipelinePass2 = device.createComputePipeline({
-        label: "Pass 2 Erosion",
-        layout: "auto",
-        compute: { module, entryPoint: "pass2_erosion" }
-      });
-
-      this.isGpuReady = true;
-    } catch (err) {
-      console.warn("Shallow water GPU pipeline init failed, using CPU:", err);
-      this.isGpuReady = false;
-    }
   }
 
   public reset(): void {
@@ -266,7 +221,6 @@ export class ShallowWaterErosion {
         const prevX = Math.max(0, Math.min(res - 1, x - vx * dt));
         const prevY = Math.max(0, Math.min(res - 1, y - vy * dt));
 
-        // Bilinear sampling of previous sediment
         const x0 = Math.floor(prevX);
         const y0 = Math.floor(prevY);
         const x1 = Math.min(res - 1, x0 + 1);

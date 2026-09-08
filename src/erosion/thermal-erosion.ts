@@ -43,10 +43,6 @@ export class ThermalErosion {
     }
   }
 
-  /**
-   * Simulates thermal erosion across the heightmap.
-   * Alternates material transfer from cells exceeding the angle of repose to lower neighbors.
-   */
   public simulate(
     heightmap: Heightmap,
     params: ThermalErosionParams,
@@ -65,10 +61,6 @@ export class ThermalErosion {
     };
   }
 
-  /**
-   * CPU implementation of talus angle relaxation.
-   * Guarantees strict mass conservation across the entire grid.
-   */
   public simulateCPU(
     heightmap: Heightmap,
     params: ThermalErosionParams,
@@ -80,8 +72,6 @@ export class ThermalErosion {
 
     const rad = (params.talusAngle * Math.PI) / 180.0;
     const tanTalus = Math.tan(rad);
-    const orthoThreshold = cellSpacing * tanTalus;
-    const diagThreshold = cellSpacing * Math.SQRT2 * tanTalus;
 
     const bedrockTan = Math.tan((params.bedrockTalusAngle * Math.PI) / 180.0);
     const sedimentTan = Math.tan((params.sedimentTalusAngle * Math.PI) / 180.0);
@@ -112,7 +102,6 @@ export class ThermalErosion {
 
           let curTan = tanTalus;
           if (params.spatiallyVarying) {
-            // High elevations / steep bedrock hold higher angle, low valleys have sediment
             const normH = Math.max(0, Math.min(1, h / 100.0));
             curTan = sedimentTan + (bedrockTan - sedimentTan) * normH;
           }
@@ -141,7 +130,6 @@ export class ThermalErosion {
           }
 
           if (totalExcess > 0) {
-            // Material transferred to neighbors is bounded to prevent over-flattening
             const volumeToSlump = Math.min(maxDiff * 0.5, totalExcess * 0.25) * params.erosionRate;
             temp[idx] -= volumeToSlump;
             totalVolume += volumeToSlump;
@@ -247,13 +235,11 @@ export class ThermalErosion {
       pass.end();
       this.device.queue.submit([encoder.finish()]);
 
-      // Swap ping-pong buffers
       const temp = src;
       src = dst;
       dst = temp;
     }
 
-    // Read back final heightmap
     const copyEncoder = this.device.createCommandEncoder();
     copyEncoder.copyBufferToBuffer(src, 0, this.readbackBuffer!, 0, byteSize);
     this.device.queue.submit([copyEncoder.finish()]);

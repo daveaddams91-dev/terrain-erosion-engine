@@ -4,10 +4,8 @@ export class WaterMesh {
   public readonly mesh: THREE.Mesh;
   public readonly geometry: THREE.PlaneGeometry;
   public readonly material: THREE.ShaderMaterial;
-  private readonly worldSize: number;
 
   constructor(worldSize = 500, resolution = 256) {
-    this.worldSize = worldSize;
     this.geometry = new THREE.PlaneGeometry(
       worldSize,
       worldSize,
@@ -45,10 +43,7 @@ export class WaterMesh {
         vec3 L = normalize(uSunDir);
         vec3 V = normalize(cameraPosition - vWorldPosition);
 
-        // Fresnel term
         float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.0);
-
-        // Subtle specular highlight
         vec3 H = normalize(L + V);
         float spec = pow(max(0.0, dot(N, H)), 64.0) * 0.8;
 
@@ -77,9 +72,6 @@ export class WaterMesh {
     this.mesh.visible = false;
   }
 
-  /**
-   * Updates water mesh vertex Y coordinates based on terrain elevation + water height.
-   */
   public update(
     terrainData: Float32Array,
     waterData: Float32Array,
@@ -100,7 +92,6 @@ export class WaterMesh {
         posArray[vIdx + 1] = h + w;
         hasWater = true;
       } else {
-        // Drop below terrain so thin water film does not z-fight
         posArray[vIdx + 1] = h - 2.0;
       }
     }
