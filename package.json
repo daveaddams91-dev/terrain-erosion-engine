@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "terrain-erosion-engine",
   "version": "1.0.0",
   "description": "Physically-based procedural terrain generator with hydraulic (droplet & shallow water) and thermal erosion simulation accelerated via WebGPU compute shaders and real-time Three.js rendering.",
@@ -27,7 +27,9 @@
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
     "@types/three": "^0.174.0",
+    "@webgpu/types": "^0.1.72",
     "typescript": "^5.8.0",
     "vite": "^6.2.0",
     "vitest": "^3.0.0"
