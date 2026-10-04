@@ -131,17 +131,17 @@ export class DropletErosionCPU {
       let exitedGrid = false;
 
       for (let step = 0; step < params.maxLifetime; step++) {
-        const nodeX = Math.floor(posX);
-        const nodeY = Math.floor(posY);
+        const nodeX = posX | 0;
+        const nodeY = posY | 0;
         const cellOffset = nodeY * res + nodeX;
 
         const cellOffsetX = posX - nodeX;
         const cellOffsetY = posY - nodeY;
 
         const idx00 = cellOffset;
-        const idx10 = Math.min(idx00 + 1, res * res - 1);
-        const idx01 = Math.min(idx00 + res, res * res - 1);
-        const idx11 = Math.min(idx00 + res + 1, res * res - 1);
+        const idx10 = idx00 + 1;
+        const idx01 = idx00 + res;
+        const idx11 = idx00 + res + 1;
 
         lastIdx00 = idx00;
         lastIdx10 = idx10;
@@ -184,16 +184,16 @@ export class DropletErosionCPU {
           break;
         }
 
-        const newNodeX = Math.floor(posX);
-        const newNodeY = Math.floor(posY);
+        const newNodeX = posX | 0;
+        const newNodeY = posY | 0;
         const newCellOffsetX = posX - newNodeX;
         const newCellOffsetY = posY - newNodeY;
         const newCellOffset = newNodeY * res + newNodeX;
 
         const nh00 = data[newCellOffset];
-        const nh10 = data[Math.min(newCellOffset + 1, res * res - 1)];
-        const nh01 = data[Math.min(newCellOffset + res, res * res - 1)];
-        const nh11 = data[Math.min(newCellOffset + res + 1, res * res - 1)];
+        const nh10 = data[newCellOffset + 1];
+        const nh01 = data[newCellOffset + res];
+        const nh11 = data[newCellOffset + res + 1];
 
         const newHeight =
           nh00 * (1.0 - newCellOffsetX) * (1.0 - newCellOffsetY) +
