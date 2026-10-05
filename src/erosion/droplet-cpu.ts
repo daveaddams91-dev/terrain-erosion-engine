@@ -65,7 +65,6 @@ export class DropletErosionCPU {
     const offsetsX = new Int32Array(count);
     const offsetsY = new Int32Array(count);
     const weights = new Float32Array(count);
-    const invSum = weightSum > 0 ? 1.0 / weightSum : 1.0;
 
     for (let i = 0; i < count; i++) {
       offsetsX[i] = xList[i];
