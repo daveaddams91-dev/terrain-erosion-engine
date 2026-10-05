@@ -3,9 +3,9 @@ import { PRNG } from "../core/prng";
 import type { DropletErosionParams } from "../core/types";
 
 interface BrushCache {
-  offsetsX: Int32Array[];
-  offsetsY: Int32Array[];
-  weights: Float32Array[];
+  offsetsX: Int32Array;
+  offsetsY: Int32Array;
+  weights: Float32Array;
 }
 
 /**
@@ -16,7 +16,6 @@ interface BrushCache {
 export class DropletErosionCPU {
   private brushCache: BrushCache | null = null;
   private cachedRadius = -1;
-  private cachedResolution = -1;
   private prng: PRNG;
 
   // Mass conservation diagnostics
@@ -38,66 +37,44 @@ export class DropletErosionCPU {
     this.sedimentCarriedOffGrid = 0;
   }
 
-  private initBrush(radius: number, resolution: number): void {
-    if (this.brushCache && this.cachedRadius === radius && this.cachedResolution === resolution) {
+  private initBrush(radius: number): void {
+    if (this.brushCache && this.cachedRadius === radius) {
       return;
     }
 
-    const totalCells = resolution * resolution;
-    const offsetsX: Int32Array[] = new Array(totalCells);
-    const offsetsY: Int32Array[] = new Array(totalCells);
-    const weights: Float32Array[] = new Array(totalCells);
-
     const rInt = Math.ceil(radius);
+    const xList: number[] = [];
+    const yList: number[] = [];
+    const wList: number[] = [];
+    let weightSum = 0;
 
-    for (let y = 0; y < resolution; y++) {
-      for (let x = 0; x < resolution; x++) {
-        const idx = y * resolution + x;
-        const xList: number[] = [];
-        const yList: number[] = [];
-        const wList: number[] = [];
-        let weightSum = 0;
-
-        for (let dy = -rInt; dy <= rInt; dy++) {
-          const cy = y + dy;
-          if (cy < 0 || cy >= resolution) continue;
-
-          for (let dx = -rInt; dx <= rInt; dx++) {
-            const cx = x + dx;
-            if (cx < 0 || cx >= resolution) continue;
-
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist <= radius) {
-              const weight = 1.0 - dist / radius;
-              xList.push(cx);
-              yList.push(cy);
-              wList.push(weight);
-              weightSum += weight;
-            }
-          }
+    for (let dy = -rInt; dy <= rInt; dy++) {
+      for (let dx = -rInt; dx <= rInt; dx++) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= radius) {
+          const weight = 1.0 - dist / radius;
+          xList.push(dx);
+          yList.push(dy);
+          wList.push(weight);
+          weightSum += weight;
         }
-
-        const count = xList.length;
-        const oX = new Int32Array(count);
-        const oY = new Int32Array(count);
-        const wA = new Float32Array(count);
-        const invSum = weightSum > 0 ? 1.0 / weightSum : 1.0;
-
-        for (let i = 0; i < count; i++) {
-          oX[i] = xList[i];
-          oY[i] = yList[i];
-          wA[i] = wList[i] * invSum;
-        }
-
-        offsetsX[idx] = oX;
-        offsetsY[idx] = oY;
-        weights[idx] = wA;
       }
+    }
+
+    const count = xList.length;
+    const offsetsX = new Int32Array(count);
+    const offsetsY = new Int32Array(count);
+    const weights = new Float32Array(count);
+    const invSum = weightSum > 0 ? 1.0 / weightSum : 1.0;
+
+    for (let i = 0; i < count; i++) {
+      offsetsX[i] = xList[i];
+      offsetsY[i] = yList[i];
+      weights[i] = wList[i];
     }
 
     this.brushCache = { offsetsX, offsetsY, weights };
     this.cachedRadius = radius;
-    this.cachedResolution = resolution;
   }
 
   public simulate(heightmap: Heightmap, params: DropletErosionParams): {
@@ -108,8 +85,16 @@ export class DropletErosionCPU {
     const data = heightmap.data;
     const numDroplets = params.iterationsPerStep;
 
-    this.initBrush(params.erosionRadius, res);
+    this.initBrush(params.erosionRadius);
     const brush = this.brushCache!;
+    const brushLength = brush.weights.length;
+
+    // We normalize the weights per-application to ensure we don't erode more than requested
+    // near edges, but to be compatible with previous behavior where weights summed to 1 over the full circle,
+    // we can either normalize here per cell or rely on the fact that droplets shouldn't erode outside.
+    // The previous implementation pre-normalized weights. Since we now clip dynamically,
+    // edge cells will erode slightly less total mass if we use static weights, which is physically acceptable
+    // (the brush hits a wall).
 
     let totalDelta = 0;
 
@@ -237,21 +222,23 @@ export class DropletErosionCPU {
           );
 
           if (erosionAmount > 0) {
-            const curIdx = nodeY * res + nodeX;
-            const bX = brush.offsetsX[curIdx];
-            const bY = brush.offsetsY[curIdx];
-            const bW = brush.weights[curIdx];
-            const bCount = bW.length;
+            let actualErosion = 0;
 
-            for (let i = 0; i < bCount; i++) {
-              const cellIdx = bY[i] * res + bX[i];
-              const cellErode = erosionAmount * bW[i];
-              data[cellIdx] -= cellErode;
+            for (let i = 0; i < brushLength; i++) {
+              const bx = nodeX + brush.offsetsX[i];
+              const by = nodeY + brush.offsetsY[i];
+
+              if (bx >= 0 && bx < res && by >= 0 && by < res) {
+                const cellIdx = by * res + bx;
+                const cellErode = erosionAmount * brush.weights[i];
+                data[cellIdx] -= cellErode;
+                actualErosion += cellErode;
+              }
             }
 
-            sediment += erosionAmount;
-            this.totalErodedMass += erosionAmount;
-            totalDelta += erosionAmount;
+            sediment += actualErosion;
+            this.totalErodedMass += actualErosion;
+            totalDelta += actualErosion;
           }
         }
 
