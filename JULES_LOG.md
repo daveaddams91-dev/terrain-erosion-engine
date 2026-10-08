@@ -4,3 +4,6 @@ Optimized the inner loop of `DropletErosionCPU.simulate` in `src/erosion/droplet
 ### 2026-10-05: Performance Optimization - Droplet CPU Brush Initialization
 
 Optimized the `initBrush` function in `DropletErosionCPU` to pre-compute a single origin-centered brush instead of generating an absolute grid of brush offsets for every single cell. This reduces initialization overhead from (N^2 * R^2)$ to (R^2)$, bringing setup time for a 512x512 grid down from ~1100ms to <1ms and dropping simulation time for benchmarked configurations from ~640ms to ~230ms.
+
+### 2026-10-07 Added Test Coverage for Core Modules
+Added comprehensive unit tests for `src/core/heightmap.ts` and `src/erosion/erosion-manager.ts` using Vitest to satisfy Priority #2 of the daily improvements. Implemented verification for `Heightmap` mass calculations, gradients, initialization, and bilinear sampling, achieving 100% test coverage. Added checks for `ErosionManager` verifying direct and interleaved steps, resolving telemetry formatting, and increasing overall project coverage by over 7% (from ~28% to >35%). Also added `@vitest/coverage-v8` to dependencies and `coverage/` outputs to `.gitignore`.
