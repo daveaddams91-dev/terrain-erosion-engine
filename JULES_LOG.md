@@ -7,3 +7,6 @@ Optimized the `initBrush` function in `DropletErosionCPU` to pre-compute a singl
 
 ### 2026-10-07 Added Test Coverage for Core Modules
 Added comprehensive unit tests for `src/core/heightmap.ts` and `src/erosion/erosion-manager.ts` using Vitest to satisfy Priority #2 of the daily improvements. Implemented verification for `Heightmap` mass calculations, gradients, initialization, and bilinear sampling, achieving 100% test coverage. Added checks for `ErosionManager` verifying direct and interleaved steps, resolving telemetry formatting, and increasing overall project coverage by over 7% (from ~28% to >35%). Also added `@vitest/coverage-v8` to dependencies and `coverage/` outputs to `.gitignore`.
+
+### 2026-10-08: Added test coverage to `src/export` module
+To increase overall test coverage by more than 5%, I added comprehensive unit tests for the zero-dependency raw and 16-bit PNG export utilities in `test/export/`. I also configured the test environment with `jsdom` to verify browser DOM interactions for downloading files, fully mocking `document.createElement` and `URL.createObjectURL`. This successfully covers a critical piece of the data pipeline and boosted overall coverage to ~42.31%.
